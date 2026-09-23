@@ -2,8 +2,11 @@ name: Check Migracion Panama
 
 on:
   schedule:
-    # 8:00 AM Panama time (UTC-5)
-    - cron: "0 13 * * *"
+    # Panama is UTC-5
+    # 8:00 AM  = 13:00 UTC
+    # 12:00 PM = 17:00 UTC
+    # 4:00 PM  = 21:00 UTC
+    - cron: "0 13,17,21 * * *"
 
   # Allows you to run it manually from GitHub
   workflow_dispatch:
