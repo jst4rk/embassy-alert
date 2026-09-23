@@ -26,9 +26,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 24
-
+    
       - name: Check migration status
         env:
+          NODE_OPTIONS: --use-system-ca
           PASSPORT: ${{ secrets.MIGRACION_PASSPORT }}
           CASE_NUMBER: ${{ secrets.MIGRACION_CASE }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
