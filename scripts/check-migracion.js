@@ -1,4 +1,3 @@
-```javascript
 const fs = require("fs");
 const path = require("path");
 
@@ -106,9 +105,7 @@ function findChanges(previous, current) {
   if (!previous) {
     return {
       changed: true,
-      changes: [
-        "Initial status recorded."
-      ],
+      changes: ["Initial status recorded."],
     };
   }
 
@@ -117,20 +114,20 @@ function findChanges(previous, current) {
   const previousRows = previous.rows ?? [];
   const currentRows = current.rows ?? [];
 
-  // New rows
+  // Detect new rows
   if (currentRows.length > previousRows.length) {
     const newRows = currentRows.slice(previousRows.length);
 
     for (const row of newRows) {
       changes.push(
-        `New stage: ${row.orden}. ${row.tarea}<br>` +
+        `<strong>New stage: ${row.orden}. ${row.tarea}</strong><br>` +
         `Start: ${row.fecha_inicio}<br>` +
         `Completion: ${row.fecha_fin || "Pending"}`
       );
     }
   }
 
-  // Changed completion dates
+  // Detect changes to existing rows
   const previousByOrder = new Map(
     previousRows.map((row) => [row.orden, row])
   );
@@ -147,6 +144,14 @@ function findChanges(previous, current) {
         `<strong>Stage updated: ${row.orden}. ${row.tarea}</strong><br>` +
         `Previous completion: ${oldRow.fecha_fin || "Pending"}<br>` +
         `New completion: ${row.fecha_fin || "Pending"}`
+      );
+    }
+
+    if (oldRow.tarea !== row.tarea) {
+      changes.push(
+        `<strong>Stage changed: ${row.orden}</strong><br>` +
+        `Previous: ${oldRow.tarea}<br>` +
+        `New: ${row.tarea}`
       );
     }
   }
@@ -185,27 +190,31 @@ async function sendEmail(current, changes) {
 
     <hr>
 
-    <h3>Current status</h3>
+    <h3>Estado actual</h3>
 
     <table border="1" cellpadding="6" cellspacing="0">
       <thead>
         <tr>
-          <th>Order</th>
-          <th>Stage</th>
-          <th>Start</th>
-          <th>Completion</th>
+          <th>Orden</th>
+          <th>Tarea</th>
+          <th>Fecha inicio</th>
+          <th>Fecha finalización</th>
         </tr>
       </thead>
 
       <tbody>
-        ${current.rows.map((row) => `
-          <tr>
-            <td>${row.orden}</td>
-            <td>${row.tarea}</td>
-            <td>${row.fecha_inicio}</td>
-            <td>${row.fecha_fin || "Pending"}</td>
-          </tr>
-        `).join("")}
+        ${current.rows
+          .map(
+            (row) => `
+              <tr>
+                <td>${row.orden}</td>
+                <td>${row.tarea}</td>
+                <td>${row.fecha_inicio}</td>
+                <td>${row.fecha_fin || "Pendiente"}</td>
+              </tr>
+            `
+          )
+          .join("")}
       </tbody>
     </table>
   `;
@@ -254,6 +263,11 @@ async function main() {
   console.log("Checking migration status...");
 
   const html = await getStatus();
+
+  console.log(
+    `Received ${html.length} characters from Migracion.`
+  );
+
   const current = buildStatus(html);
 
   console.log(
@@ -272,11 +286,7 @@ async function main() {
 
   if (result.changed) {
     console.log("Change detected.");
-
-    await sendEmail(
-      current,
-      result.changes
-    );
+    await sendEmail(current, result.changes);
   } else {
     console.log("No changes detected.");
   }
@@ -296,4 +306,3 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
-```
