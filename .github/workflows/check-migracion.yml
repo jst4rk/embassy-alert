@@ -4,6 +4,8 @@ on:
   schedule:
     # 8:00 AM Panama time (UTC-5)
     - cron: "0 13 * * *"
+
+  # Allows you to run it manually from GitHub
   workflow_dispatch:
 
 permissions:
@@ -26,8 +28,8 @@ jobs:
         env:
           PASSPORT: ${{ secrets.MIGRACION_PASSPORT }}
           CASE_NUMBER: ${{ secrets.MIGRACION_CASE }}
-          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          NOTIFICATION_EMAIL: ${{ secrets.NOTIFICATION_EMAIL }}
         run: node scripts/check-migracion.js
 
       - name: Save status
