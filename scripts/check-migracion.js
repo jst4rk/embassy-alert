@@ -16,27 +16,30 @@ const statusPath = path.join(
 );
 
 async function getStatus() {
-  const body = new URLSearchParams({
-    pasaporte: passport,
-    caso: caseNumber,
-  });
+  const { execFile } = require("child_process");
+  const { promisify } = require("util");
 
-  const response = await fetch(URL, {
-    method: "POST",
-    headers: {
-      "X-Requested-With": "XMLHttpRequest",
-      "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    },
+  const execFileAsync = promisify(execFile);
+
+  const body = `pasaporte=${encodeURIComponent(
+    passport
+  )}&caso=${encodeURIComponent(caseNumber)}`;
+
+  const { stdout } = await execFileAsync("curl", [
+    "-sS",
+    "-4",
+    "-X",
+    "POST",
+    URL,
+    "-H",
+    "X-Requested-With: XMLHttpRequest",
+    "-H",
+    "Content-Type: application/x-www-form-urlencoded; charset=UTF-8",
+    "--data",
     body,
-  });
+  ]);
 
-  if (!response.ok) {
-    throw new Error(
-      `Migracion returned HTTP ${response.status}`
-    );
-  }
-
-  return response.text();
+  return stdout;
 }
 
 function decodeHtml(value) {
