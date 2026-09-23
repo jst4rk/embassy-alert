@@ -1,11 +1,14 @@
+```javascript
 const fs = require("fs");
 const path = require("path");
 
-const url =
+const URL =
   "https://tramites.migracion.gob.pa/portal_migracion_digital/app/server/visas_consulares.php";
 
 const passport = process.env.PASSPORT;
 const caseNumber = process.env.CASE_NUMBER;
+const resendApiKey = process.env.RESEND_API_KEY;
+const notificationEmail = process.env.NOTIFICATION_EMAIL;
 
 const statusPath = path.join(
   process.cwd(),
@@ -19,7 +22,7 @@ async function getStatus() {
     caso: caseNumber,
   });
 
-  const response = await fetch(url, {
+  const response = await fetch(URL, {
     method: "POST",
     headers: {
       "X-Requested-With": "XMLHttpRequest",
@@ -30,7 +33,7 @@ async function getStatus() {
 
   if (!response.ok) {
     throw new Error(
-      `Migration server returned HTTP ${response.status}`
+      `Migracion returned HTTP ${response.status}`
     );
   }
 
@@ -51,10 +54,8 @@ function parseRows(html) {
   const rowRegex = /<tr>([\s\S]*?)<\/tr>/gi;
 
   for (const match of html.matchAll(rowRegex)) {
-    const rowHtml = match[1];
-
     const cells = [
-      ...rowHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi),
+      ...match[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi),
     ].map((cell) =>
       decodeHtml(cell[1].replace(/<[^>]+>/g, " "))
     );
@@ -101,36 +102,35 @@ function buildStatus(html) {
   };
 }
 
-function createNotification(previous, current) {
+function findChanges(previous, current) {
   if (!previous) {
-    return `🔎 Migración Panamá
-
-Caso: ${current.applicant.caso}
-Solicitante: ${current.applicant.solicitante}
-
-Estado inicial registrado.
-Etapas encontradas: ${current.rows.length}`;
+    return {
+      changed: true,
+      changes: [
+        "Initial status recorded."
+      ],
+    };
   }
 
-  const messages = [];
+  const changes = [];
 
   const previousRows = previous.rows ?? [];
   const currentRows = current.rows ?? [];
 
+  // New rows
   if (currentRows.length > previousRows.length) {
     const newRows = currentRows.slice(previousRows.length);
 
     for (const row of newRows) {
-      messages.push(
-        `🆕 Nueva etapa
-
-${row.orden}. ${row.tarea}
-Inicio: ${row.fecha_inicio}
-Finalización: ${row.fecha_fin || "Pendiente"}`
+      changes.push(
+        `New stage: ${row.orden}. ${row.tarea}<br>` +
+        `Start: ${row.fecha_inicio}<br>` +
+        `Completion: ${row.fecha_fin || "Pending"}`
       );
     }
   }
 
+  // Changed completion dates
   const previousByOrder = new Map(
     previousRows.map((row) => [row.orden, row])
   );
@@ -143,53 +143,112 @@ Finalización: ${row.fecha_fin || "Pendiente"}`
     }
 
     if (oldRow.fecha_fin !== row.fecha_fin) {
-      messages.push(
-        `✅ Etapa actualizada
-
-${row.orden}. ${row.tarea}
-Fecha finalización:
-${oldRow.fecha_fin || "Pendiente"} → ${row.fecha_fin || "Pendiente"}`
+      changes.push(
+        `<strong>Stage updated: ${row.orden}. ${row.tarea}</strong><br>` +
+        `Previous completion: ${oldRow.fecha_fin || "Pending"}<br>` +
+        `New completion: ${row.fecha_fin || "Pending"}`
       );
     }
   }
 
-  return messages.length
-    ? `🚨 Migración Panamá — Caso ${current.applicant.caso}\n\n${messages.join("\n\n")}`
-    : null;
+  return {
+    changed: changes.length > 0,
+    changes,
+  };
 }
 
-async function sendTelegram(message) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+async function sendEmail(current, changes) {
+  const subject =
+    `Migración Panamá - Caso ${current.applicant.caso} actualizado`;
 
-  if (!token || !chatId) {
-    throw new Error("Telegram secrets are not configured.");
-  }
+  const html = `
+    <h2>Migración Panamá</h2>
+
+    <p>
+      <strong>Caso:</strong>
+      ${current.applicant.caso}
+    </p>
+
+    <p>
+      <strong>Solicitante:</strong>
+      ${current.applicant.solicitante}
+    </p>
+
+    <p>
+      <strong>Tipo de trámite:</strong>
+      ${current.applicant.tipo_tramite}
+    </p>
+
+    <hr>
+
+    ${changes.map((change) => `<p>${change}</p>`).join("")}
+
+    <hr>
+
+    <h3>Current status</h3>
+
+    <table border="1" cellpadding="6" cellspacing="0">
+      <thead>
+        <tr>
+          <th>Order</th>
+          <th>Stage</th>
+          <th>Start</th>
+          <th>Completion</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${current.rows.map((row) => `
+          <tr>
+            <td>${row.orden}</td>
+            <td>${row.tarea}</td>
+            <td>${row.fecha_inicio}</td>
+            <td>${row.fecha_fin || "Pending"}</td>
+          </tr>
+        `).join("")}
+      </tbody>
+    </table>
+  `;
 
   const response = await fetch(
-    `https://api.telegram.org/bot${token}/sendMessage`,
+    "https://api.resend.com/emails",
     {
       method: "POST",
       headers: {
+        Authorization: `Bearer ${resendApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
+        from: "Migracion Monitor <onboarding@resend.dev>",
+        to: [notificationEmail],
+        subject,
+        html,
       }),
     }
   );
 
   if (!response.ok) {
+    const error = await response.text();
+
     throw new Error(
-      `Telegram returned HTTP ${response.status}`
+      `Resend failed: ${response.status} ${error}`
     );
   }
+
+  console.log("Email notification sent.");
 }
 
 async function main() {
   if (!passport || !caseNumber) {
-    throw new Error("Migration credentials are not configured.");
+    throw new Error(
+      "MIGRACION_PASSPORT or MIGRACION_CASE is missing."
+    );
+  }
+
+  if (!resendApiKey || !notificationEmail) {
+    throw new Error(
+      "RESEND_API_KEY or NOTIFICATION_EMAIL is missing."
+    );
   }
 
   console.log("Checking migration status...");
@@ -209,18 +268,23 @@ async function main() {
     );
   }
 
-  const notification = createNotification(previous, current);
+  const result = findChanges(previous, current);
 
-  if (notification) {
-    console.log("Change detected. Sending Telegram notification...");
-    await sendTelegram(notification);
+  if (result.changed) {
+    console.log("Change detected.");
+
+    await sendEmail(
+      current,
+      result.changes
+    );
   } else {
     console.log("No changes detected.");
   }
 
-  fs.mkdirSync(path.dirname(statusPath), {
-    recursive: true,
-  });
+  fs.mkdirSync(
+    path.dirname(statusPath),
+    { recursive: true }
+  );
 
   fs.writeFileSync(
     statusPath,
@@ -232,3 +296,4 @@ main().catch((error) => {
   console.error(error);
   process.exit(1);
 });
+```
