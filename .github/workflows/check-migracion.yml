@@ -6,7 +6,7 @@ on:
     # 8:00 AM  = 13:00 UTC
     # 12:00 PM = 17:00 UTC
     # 4:00 PM  = 21:00 UTC
-    - cron: "0 13,17,21 * * *"
+    - cron: "7 13,17,21 * * *"
 
   # Allows you to run it manually from GitHub
   workflow_dispatch:
