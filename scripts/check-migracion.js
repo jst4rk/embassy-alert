@@ -15,32 +15,7 @@ const statusPath = path.join(
   "migracion-status.json"
 );
 
-async function getStatus() {
-  const { execFile } = require("child_process");
-  const { promisify } = require("util");
-
-  const execFileAsync = promisify(execFile);
-
-  const body = `pasaporte=${encodeURIComponent(
-    passport
-  )}&caso=${encodeURIComponent(caseNumber)}`;
-
-  const { stdout } = await execFileAsync("curl", [
-    "-sS",
-    "-4",
-    "-X",
-    "POST",
-    URL,
-    "-H",
-    "X-Requested-With: XMLHttpRequest",
-    "-H",
-    "Content-Type: application/x-www-form-urlencoded; charset=UTF-8",
-    "--data",
-    body,
-  ]);
-
-  return stdout;
-}
+async function getStatus() { const { execFile } = require("child_process"); const { promisify } = require("util"); const execFileAsync = promisify(execFile); const body = `pasaporte=${encodeURIComponent( passport )}&caso=${encodeURIComponent(caseNumber)}`; const { stdout } = await execFileAsync("curl", [ "-k", "-sS", "-4", "-X", "POST", URL, "-H", "X-Requested-With: XMLHttpRequest", "-H", "Content-Type: application/x-www-form-urlencoded; charset=UTF-8", "--data", body, ]); return stdout; }
 
 function decodeHtml(value) {
   return value
