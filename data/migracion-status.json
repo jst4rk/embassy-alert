@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-12T00:25:50.307Z",
+  "checked_at": "2026-10-12T15:52:51.780Z",
   "applicant": {
     "caso": "334870",
     "tipo_tramite": "VISA AUTORIZADA (VISA TURISTA)",
@@ -30,6 +30,12 @@
       "orden": "4",
       "tarea": "Resultado",
       "fecha_inicio": "08-10-2026 03:10:34",
+      "fecha_fin": "12-10-2026 08:10:12"
+    },
+    {
+      "orden": "5",
+      "tarea": "Notificación de Consulado",
+      "fecha_inicio": "12-10-2026 08:10:12",
       "fecha_fin": ""
     }
   ]
