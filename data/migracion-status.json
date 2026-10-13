@@ -1,5 +1,5 @@
 {
-  "checked_at": "2026-10-12T21:41:25.073Z",
+  "checked_at": "2026-10-13T19:50:00.114Z",
   "applicant": {
     "caso": "334870",
     "tipo_tramite": "VISA AUTORIZADA (VISA TURISTA)",
@@ -42,7 +42,7 @@
       "orden": "6",
       "tarea": "Archivo",
       "fecha_inicio": "12-10-2026 11:10:51",
-      "fecha_fin": ""
+      "fecha_fin": "13-10-2026 06:10:57"
     }
   ]
 }
